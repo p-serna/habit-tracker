@@ -16,8 +16,9 @@ RUN npm ci
 # Copy project files
 COPY . .
 
-# Expose port 8081 (default Expo port)
+# Expose ports
 EXPOSE 8081
+EXPOSE 3210
 
-# Start Expo development server
-CMD ["npm", "start"]
+# Start Convex development server by default
+CMD ["npm", "run", "dev"]
