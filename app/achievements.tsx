@@ -202,8 +202,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: "#f3f4f6",
-    justifyConte
-nt: "center",
+    justifyContent: "center",
     alignItems: "center",
   },
   backButtonText: {
