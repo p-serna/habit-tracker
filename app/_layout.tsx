@@ -1,14 +1,11 @@
 
-
 import { Stack } from "expo-router";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { StatusBar } from "expo-status-bar";
-
-const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
+import { SQLiteProvider } from "../src/contexts/SQLiteProvider";
 
 export default function RootLayout() {
   return (
-    <ConvexProvider client={convex}>
+    <SQLiteProvider>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -19,6 +16,6 @@ export default function RootLayout() {
         <Stack.Screen name="achievements" />
         <Stack.Screen name="add-habit" />
       </Stack>
-    </ConvexProvider>
+    </SQLiteProvider>
   );
 }

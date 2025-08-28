@@ -12,8 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { router } from "expo-router";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useHabits } from "@/src/hooks";
 import * as Haptics from "expo-haptics";
 
 const HABIT_COLORS = [
@@ -35,7 +34,7 @@ export default function AddHabitScreen() {
   const [points, setPoints] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
 
-  const createHabit = useMutation(api.habits.create);
+  const { createHabit } = useHabits();
 
   const handleHapticFeedback = () => {
     if (Platform.OS !== 'web') {
