@@ -231,8 +231,7 @@ export default function AddHabitScreen() {
                   <Text style={styles.previewFrequency}>
                     {targetFrequency}x per week • {points} points
                   </Text>
-                <
-/View>
+                </View>
               </View>
             </View>
           </View>
@@ -440,8 +439,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopC
-olor: "#e5e7eb",
+    borderTopColor: "#e5e7eb",
   },
   saveButton: {
     backgroundColor: "#3b82f6",
