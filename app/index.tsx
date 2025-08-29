@@ -10,22 +10,30 @@ import {
   Platform,
 } from "react-native";
 import { useHabits, useTodayCompletions, useStats, useAchievements } from "@/src/hooks";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import HabitCard from "@/components/HabitCard";
 import StatsHeader from "@/components/StatsHeader";
 import WeeklyProgress from "@/components/WeeklyProgress";
 
 export default function HomeScreen() {
-  const { data: habits, isLoading: habitsLoading } = useHabits();
-  const { data: todayCompletions, isLoading: completionsLoading } = useTodayCompletions();
-  const { data: stats, isLoading: statsLoading } = useStats();
+  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits } = useHabits();
+  const { data: todayCompletions, isLoading: completionsLoading, refetch: refetchCompletions } = useTodayCompletions();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useStats();
   const { initializeAchievements } = useAchievements();
+  
 
   useEffect(() => {
     // Initialize achievements on first load
     initializeAchievements();
   }, []);
+
+  // Refetch habits when screen comes back into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refetchHabits();
+    }, [refetchHabits])
+  );
 
   const completedToday = new Set(todayCompletions?.map(c => c.habitId) || []);
 
@@ -91,6 +99,10 @@ export default function HomeScreen() {
                   habit={habit}
                   isCompleted={completedToday.has(habit.id)}
                   onHapticFeedback={handleHapticFeedback}
+                  onRefreshNeeded={() => {
+                    refetchCompletions();
+                    refetchStats();
+                  }}
                 />
               ))}
             </View>

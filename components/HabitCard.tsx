@@ -10,9 +10,10 @@ interface HabitCardProps {
   habit: Habit;
   isCompleted: boolean;
   onHapticFeedback: () => void;
+  onRefreshNeeded: () => void;
 }
 
-export default function HabitCard({ habit, isCompleted, onHapticFeedback }: HabitCardProps) {
+export default function HabitCard({ habit, isCompleted, onHapticFeedback, onRefreshNeeded }: HabitCardProps) {
   const { completeHabit } = useCompletions();
   const { checkAndUnlockAchievements } = useAchievements();
   const { updateStats } = useStats();
@@ -24,6 +25,9 @@ export default function HabitCard({ habit, isCompleted, onHapticFeedback }: Habi
       if (!isCompleted) {
         const today = new Date().toISOString().split('T')[0];
         await completeHabit(habit.id, today);
+        
+        // Refresh parent component state to update UI immediately
+        onRefreshNeeded();
         
         // Update user stats
         await updateStats(habit.points, today);
