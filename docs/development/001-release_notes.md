@@ -1,4 +1,4 @@
-# Release Notes - v2.0.0: SQLite Migration
+# Release Notes - v0.2.0: SQLite Migration
 
 ## 🚀 Major Release: Complete Migration to Local SQLite Database
 
