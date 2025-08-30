@@ -1,5 +1,5 @@
 import { SQLiteDatabase } from 'expo-sqlite';
-import { generateId } from './database';
+import { generateId } from '../utils/id';
 
 export interface Migration {
   version: number;
@@ -179,6 +179,25 @@ const migrations: Migration[] = [
           [achievement.id, achievement.name, achievement.description, achievement.icon, achievement.type, achievement.requirement, achievement.points, null]
         );
       }
+    }
+  },
+  {
+    version: 2,
+    name: 'add_archive_fields',
+    up: async (db: SQLiteDatabase) => {
+      // Add archive fields to habits table
+      await db.execAsync(`
+        ALTER TABLE habits ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0;
+      `);
+      
+      await db.execAsync(`
+        ALTER TABLE habits ADD COLUMN archivedAt INTEGER NULL;
+      `);
+      
+      // Create index for efficient archived habit queries
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_habits_archived ON habits(isArchived);
+      `);
     }
   }
 ];

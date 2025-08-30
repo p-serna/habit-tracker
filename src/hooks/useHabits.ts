@@ -59,6 +59,26 @@ export const useHabits = () => {
     }
   }, [db, loadHabits]);
 
+  const archiveHabit = useCallback(async (id: string): Promise<void> => {
+    try {
+      await db.archiveHabit(id);
+      await loadHabits(); // Refresh the list
+    } catch (err) {
+      console.error('Failed to archive habit:', err);
+      throw err;
+    }
+  }, [db, loadHabits]);
+
+  const unarchiveHabit = useCallback(async (id: string): Promise<void> => {
+    try {
+      await db.unarchiveHabit(id);
+      await loadHabits(); // Refresh the list
+    } catch (err) {
+      console.error('Failed to unarchive habit:', err);
+      throw err;
+    }
+  }, [db, loadHabits]);
+
   return {
     data: habits,
     isLoading: loading,
@@ -66,6 +86,8 @@ export const useHabits = () => {
     createHabit,
     updateHabit,
     removeHabit,
+    archiveHabit,
+    unarchiveHabit,
     refetch: loadHabits,
   };
 };

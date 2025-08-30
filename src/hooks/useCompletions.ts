@@ -3,7 +3,7 @@ import { useSQLiteContext } from '../contexts/SQLiteProvider';
 import { HabitCompletion, DailyTotal } from '../types/database';
 
 export const useCompletions = () => {
-  const { db, isInitialized } = useSQLiteContext();
+  const { db } = useSQLiteContext();
 
   const completeHabit = useCallback(async (habitId: string, date?: string): Promise<string> => {
     const completionDate = date || new Date().toISOString().split('T')[0];

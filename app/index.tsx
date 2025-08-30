@@ -8,25 +8,27 @@ import {
   StyleSheet,
   SafeAreaView,
   Platform,
+  Alert,
 } from "react-native";
-import { useHabits, useTodayCompletions, useStats, useAchievements } from "@/src/hooks";
+import { useHabits, useTodayCompletions, useStats, useAchievements, useCompletions } from "@/src/hooks";
 import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
-import HabitCard from "@/components/HabitCard";
+import SwipeableHabitCard from "@/components/SwipeableHabitCard";
 import StatsHeader from "@/components/StatsHeader";
 import WeeklyProgress from "@/components/WeeklyProgress";
 
 export default function HomeScreen() {
-  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits } = useHabits();
+  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits, archiveHabit } = useHabits();
   const { data: todayCompletions, isLoading: completionsLoading, refetch: refetchCompletions } = useTodayCompletions();
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useStats();
-  const { initializeAchievements } = useAchievements();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats, updateStats } = useStats();
+  const { initializeAchievements, checkAndUnlockAchievements } = useAchievements();
+  const { completeHabit } = useCompletions();
   
 
   useEffect(() => {
     // Initialize achievements on first load
     initializeAchievements();
-  }, []);
+  }, [initializeAchievements]);
 
   // Refetch habits when screen comes back into focus
   useFocusEffect(
@@ -40,6 +42,53 @@ export default function HomeScreen() {
   const handleHapticFeedback = () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleCompleteHabit = async (habitId: string) => {
+    try {
+      const habit = habits?.find(h => h.id === habitId);
+      if (!habit) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      await completeHabit(habitId, today);
+      
+      // Refresh data
+      refetchCompletions();
+      refetchStats();
+      
+      // Update user stats
+      await updateStats(habit.points, today);
+      
+      // Check for new achievements
+      const newAchievements = await checkAndUnlockAchievements();
+      
+      // Show celebration for completion
+      let message = `You earned ${habit.points} points for completing "${habit.name}"!`;
+      
+      if (newAchievements.length > 0) {
+        const achievementNames = newAchievements.map(a => a.name).join(', ');
+        message += `\n\n🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
+      }
+      
+      Alert.alert(
+        "Great job! 🎉",
+        message,
+        [{ text: "Awesome!", style: "default" }]
+      );
+    } catch (error) {
+      console.error("Error completing habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  const handleArchiveHabit = async (habitId: string) => {
+    try {
+      await archiveHabit(habitId);
+      refetchHabits();
+    } catch (error) {
+      console.error("Error archiving habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     }
   };
 
@@ -62,7 +111,7 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Habits</Text>
+            <Text style={styles.sectionTitle}>Today&apos;s Habits</Text>
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => {
@@ -94,10 +143,12 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.habitsContainer}>
               {habits?.map((habit) => (
-                <HabitCard
+                <SwipeableHabitCard
                   key={habit.id}
                   habit={habit}
                   isCompleted={completedToday.has(habit.id)}
+                  onComplete={handleCompleteHabit}
+                  onArchive={handleArchiveHabit}
                   onHapticFeedback={handleHapticFeedback}
                   onRefreshNeeded={() => {
                     refetchCompletions();

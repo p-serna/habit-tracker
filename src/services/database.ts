@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { runMigrations } from './migrations';
+import { generateId } from '../utils/id';
 import type { 
   Habit, 
   HabitCompletion, 
@@ -31,11 +32,12 @@ export class DatabaseService {
   async getHabits(): Promise<Habit[]> {
     const db = this.getDb();
     const result = await db.getAllAsync<Habit>(
-      'SELECT * FROM habits WHERE isActive = 1 ORDER BY createdAt DESC'
+      'SELECT * FROM habits WHERE isActive = 1 AND (isArchived IS NULL OR isArchived = 0) ORDER BY createdAt DESC'
     );
     return result.map(habit => ({
       ...habit,
-      isActive: Boolean(habit.isActive)
+      isActive: Boolean(habit.isActive),
+      isArchived: Boolean(habit.isArchived)
     }));
   }
 
@@ -76,6 +78,22 @@ export class DatabaseService {
   async removeHabit(id: string): Promise<void> {
     const db = this.getDb();
     await db.runAsync('UPDATE habits SET isActive = 0 WHERE id = ?', [id]);
+  }
+
+  async archiveHabit(habitId: string): Promise<void> {
+    const db = this.getDb();
+    await db.runAsync(
+      'UPDATE habits SET isArchived = 1, archivedAt = ? WHERE id = ?',
+      [Date.now(), habitId]
+    );
+  }
+
+  async unarchiveHabit(habitId: string): Promise<void> {
+    const db = this.getDb();
+    await db.runAsync(
+      'UPDATE habits SET isArchived = 0, archivedAt = NULL WHERE id = ?',
+      [habitId]
+    );
   }
 
   // Completion operations
@@ -279,10 +297,6 @@ export class DatabaseService {
     
     return unlockedAchievements;
   }
-}
-
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // Singleton instance

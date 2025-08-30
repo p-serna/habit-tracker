@@ -1,10 +1,6 @@
-
-
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { useCompletions, useAchievements, useStats } from "@/src/hooks";
+import { View, Text, StyleSheet } from "react-native";
 import { Habit } from "@/src/types/database";
-
 
 interface HabitCardProps {
   habit: Habit;
@@ -13,57 +9,14 @@ interface HabitCardProps {
   onRefreshNeeded: () => void;
 }
 
-export default function HabitCard({ habit, isCompleted, onHapticFeedback, onRefreshNeeded }: HabitCardProps) {
-  const { completeHabit } = useCompletions();
-  const { checkAndUnlockAchievements } = useAchievements();
-  const { updateStats } = useStats();
-
-  const handleToggle = async () => {
-    onHapticFeedback();
-    
-    try {
-      if (!isCompleted) {
-        const today = new Date().toISOString().split('T')[0];
-        await completeHabit(habit.id, today);
-        
-        // Refresh parent component state to update UI immediately
-        onRefreshNeeded();
-        
-        // Update user stats
-        await updateStats(habit.points, today);
-        
-        // Check for new achievements
-        const newAchievements = await checkAndUnlockAchievements();
-        
-        // Show celebration for completion
-        let message = `You earned ${habit.points} points for completing "${habit.name}"!`;
-        
-        if (newAchievements.length > 0) {
-          const achievementNames = newAchievements.map(a => a.name).join(', ');
-          message += `\n\n🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
-        }
-        
-        Alert.alert(
-          "Great job! 🎉",
-          message,
-          [{ text: "Awesome!", style: "default" }]
-        );
-      }
-    } catch (error) {
-      console.error("Error toggling habit:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
-    }
-  };
-
+export default function HabitCard({ habit, isCompleted }: HabitCardProps) {
   return (
-    <TouchableOpacity
+    <View
       style={[
         styles.container,
         { borderLeftColor: habit.color },
         isCompleted && styles.completedContainer,
       ]}
-      onPress={handleToggle}
-      activeOpacity={0.7}
     >
       <View style={styles.content}>
         <View style={styles.leftSection}>
@@ -95,7 +48,7 @@ export default function HabitCard({ habit, isCompleted, onHapticFeedback, onRefr
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
