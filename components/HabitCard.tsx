@@ -8,13 +8,16 @@ interface HabitCardProps {
   onHapticFeedback: () => void;
   onRefreshNeeded: () => void;
   onComplete?: (habitId: string) => void;
+  onUncomplete?: (habitId: string) => void;
 }
 
-export default function HabitCard({ habit, isCompleted, onHapticFeedback, onComplete }: HabitCardProps) {
+export default function HabitCard({ habit, isCompleted, onHapticFeedback, onComplete, onUncomplete }: HabitCardProps) {
   const handlePress = () => {
+    onHapticFeedback();
     if (!isCompleted && onComplete) {
-      onHapticFeedback();
       onComplete(habit.id);
+    } else if (isCompleted && onUncomplete) {
+      onUncomplete(habit.id);
     }
   };
 
@@ -26,8 +29,8 @@ export default function HabitCard({ habit, isCompleted, onHapticFeedback, onComp
         isCompleted && styles.completedContainer,
       ]}
       onPress={handlePress}
-      disabled={isCompleted}
-      activeOpacity={isCompleted ? 1 : 0.7}
+      disabled={false}
+      activeOpacity={0.7}
     >
       <View style={styles.content}>
         <View style={styles.leftSection}>

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { UndoAction } from '@/components/UndoToast';
 
 interface UndoState {

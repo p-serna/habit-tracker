@@ -1,10 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions } from 'react-native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 
 export interface UndoAction {
-  type: 'complete' | 'archive';
+  type: 'complete' | 'archive' | 'uncomplete';
   habitId: string;
   habitName: string;
   timestamp: number;
@@ -53,7 +51,7 @@ export default function UndoToast({ action, onUndo, onDismiss, visible }: UndoTo
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, translateY, opacity]);
 
   if (!action) return null;
 
@@ -63,6 +61,8 @@ export default function UndoToast({ action, onUndo, onDismiss, visible }: UndoTo
         return `Completed "${action.habitName}"`;
       case 'archive':
         return `Archived "${action.habitName}"`;
+      case 'uncomplete':
+        return `Unmarked "${action.habitName}"`;
       default:
         return 'Action performed';
     }

@@ -116,6 +116,14 @@ export default function HomeScreen() {
       } else if (action.type === 'archive') {
         // Undo archive
         await unarchiveHabit(action.habitId);
+      } else if (action.type === 'uncomplete') {
+        // Undo uncomplete (re-complete the habit)
+        const habit = habits?.find(h => h.id === action.habitId);
+        if (habit && action.originalData) {
+          // Restore the completion
+          await completeHabit(action.habitId, today);
+          await updateStats(habit.points, today);
+        }
       }
       
       // Refresh all data
@@ -131,6 +139,38 @@ export default function HomeScreen() {
 
   const handleDismissUndo = () => {
     cancelUndoTimer();
+  };
+
+  const handleUncompleteHabit = async (habitId: string) => {
+    try {
+      const habit = habits?.find(h => h.id === habitId);
+      if (!habit) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const removedCompletion = await databaseService.removeHabitCompletion(habitId, today);
+      
+      if (removedCompletion) {
+        await databaseService.rollbackUserStats(removedCompletion.points, today);
+      }
+      
+      // Refresh data
+      refetchCompletions();
+      refetchStats();
+      
+      // Create undo action for uncomplete
+      const undoData: UndoAction = {
+        type: 'uncomplete',
+        habitId: habit.id,
+        habitName: habit.name,
+        timestamp: Date.now(),
+        originalData: removedCompletion,
+      };
+      handleUndoNeeded(undoData);
+      
+    } catch (error) {
+      console.error("Error uncompleting habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
   };
 
   if (habitsLoading || statsLoading || completionsLoading) {
@@ -190,6 +230,7 @@ export default function HomeScreen() {
                   isCompleted={completedToday.has(habit.id)}
                   onComplete={handleCompleteHabit}
                   onArchive={handleArchiveHabit}
+                  onUncomplete={handleUncompleteHabit}
                   onHapticFeedback={handleHapticFeedback}
                   onRefreshNeeded={() => {
                     refetchCompletions();

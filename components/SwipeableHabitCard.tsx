@@ -14,6 +14,7 @@ interface SwipeableHabitCardProps {
   isCompleted: boolean;
   onComplete: (habitId: string) => void;
   onArchive: (habitId: string) => void;
+  onUncomplete: (habitId: string) => void;
   onHapticFeedback: () => void;
   onRefreshNeeded: () => void;
   onUndoNeeded: (action: UndoAction) => void;
@@ -24,6 +25,7 @@ export default function SwipeableHabitCard({
   isCompleted,
   onComplete,
   onArchive,
+  onUncomplete,
   onHapticFeedback,
   onRefreshNeeded,
   onUndoNeeded,
@@ -103,10 +105,13 @@ export default function SwipeableHabitCard({
   };
 
   const getIconOpacity = (isLeft: boolean) => {
-    const range = isLeft ? [-COMPLETION_THRESHOLD, -SWIPE_THRESHOLD/2] : [SWIPE_THRESHOLD/2, COMPLETION_THRESHOLD];
     return translateX.interpolate({
-      inputRange: range,
-      outputRange: [1, 0],
+      inputRange: isLeft 
+        ? [-COMPLETION_THRESHOLD, -SWIPE_THRESHOLD/2, 0, SWIPE_THRESHOLD/2, COMPLETION_THRESHOLD]
+        : [-COMPLETION_THRESHOLD, -SWIPE_THRESHOLD/2, 0, SWIPE_THRESHOLD/2, COMPLETION_THRESHOLD],
+      outputRange: isLeft
+        ? [0, 0, 0, 0.8, 1] // Left action (complete): visible when swiping right, hidden when swiping left
+        : [1, 0.8, 0, 0, 0], // Right action (archive): visible when swiping left, hidden when swiping right
       extrapolate: 'clamp',
     });
   };
@@ -123,16 +128,16 @@ export default function SwipeableHabitCard({
           }
         ]}
       >
-        {/* Left action (archive) */}
+        {/* Left action (complete) */}
         <Animated.View style={[styles.leftAction, { opacity: getIconOpacity(true) }]}>
-          <Text style={styles.actionIcon}>🗑️</Text>
-          <Text style={styles.actionText}>Archive</Text>
-        </Animated.View>
-        
-        {/* Right action (complete) */}
-        <Animated.View style={[styles.rightAction, { opacity: getIconOpacity(false) }]}>
           <Text style={styles.actionIcon}>✅</Text>
           <Text style={styles.actionText}>Complete</Text>
+        </Animated.View>
+        
+        {/* Right action (archive) */}
+        <Animated.View style={[styles.rightAction, { opacity: getIconOpacity(false) }]}>
+          <Text style={styles.actionIcon}>🗑️</Text>
+          <Text style={styles.actionText}>Archive</Text>
         </Animated.View>
       </Animated.View>
 
@@ -164,6 +169,16 @@ export default function SwipeableHabitCard({
                 timestamp: Date.now(),
               };
               onComplete(habitId);
+              onUndoNeeded(undoData);
+            }}
+            onUncomplete={(habitId) => {
+              const undoData: UndoAction = {
+                type: 'uncomplete',
+                habitId: habit.id,
+                habitName: habit.name,
+                timestamp: Date.now(),
+              };
+              onUncomplete(habitId);
               onUndoNeeded(undoData);
             }}
           />
