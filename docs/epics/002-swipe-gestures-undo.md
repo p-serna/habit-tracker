@@ -47,11 +47,11 @@ Implement swipe gestures for habit management with undo functionality. Users wil
 - [ ] Replace current tap-to-complete with swipe-to-complete
 
 ### Phase 3: Undo System
-- [ ] Create UndoToast component for temporary notifications
-- [ ] Implement undo state management (temporary storage)
-- [ ] Add undo functionality for habit archiving
-- [ ] Add undo functionality for habit completion
-- [ ] Configure undo timeout (e.g., 5 seconds)
+- [x] Create UndoToast component for temporary notifications
+- [x] Implement undo state management (temporary storage)
+- [x] Add undo functionality for habit archiving
+- [x] Add undo functionality for habit completion
+- [x] Configure undo timeout (e.g., 5 seconds)
 - [ ] Handle app backgrounding/foregrounding during undo period
 
 ### Phase 4: UI/UX Polish
@@ -299,3 +299,10 @@ src/
 - [ ] Swipe gestures feel responsive and natural
 - [ ] Undo system works reliably within timeout period
 - [ ] No performance regression with gesture handling
+
+
+## Bug/Issues detected
+
+To tackle these issues before wrapping up the changes:
+
+- [x] Clicking on the habit does not mark it as completed. Revert this change to have the two options to mark a habit as completed: clicking or swiping to the right.

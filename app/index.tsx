@@ -16,13 +16,17 @@ import * as Haptics from "expo-haptics";
 import SwipeableHabitCard from "@/components/SwipeableHabitCard";
 import StatsHeader from "@/components/StatsHeader";
 import WeeklyProgress from "@/components/WeeklyProgress";
+import UndoToast, { UndoAction } from "@/components/UndoToast";
+import useUndoState from "@/src/hooks/useUndoState";
+import { databaseService } from "@/src/services/database";
 
 export default function HomeScreen() {
-  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits, archiveHabit } = useHabits();
+  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits, archiveHabit, unarchiveHabit } = useHabits();
   const { data: todayCompletions, isLoading: completionsLoading, refetch: refetchCompletions } = useTodayCompletions();
   const { data: stats, isLoading: statsLoading, refetch: refetchStats, updateStats } = useStats();
   const { initializeAchievements, checkAndUnlockAchievements } = useAchievements();
   const { completeHabit } = useCompletions();
+  const { pendingAction, isUndoActive, startUndoTimer, cancelUndoTimer, executeUndo } = useUndoState();
   
 
   useEffect(() => {
@@ -60,22 +64,20 @@ export default function HomeScreen() {
       // Update user stats
       await updateStats(habit.points, today);
       
-      // Check for new achievements
+      // Check for new achievements but don't show popup yet (wait for undo timeout)
       const newAchievements = await checkAndUnlockAchievements();
       
-      // Show celebration for completion
-      let message = `You earned ${habit.points} points for completing "${habit.name}"!`;
-      
+      // Store achievements data for later celebration if undo doesn't happen
       if (newAchievements.length > 0) {
-        const achievementNames = newAchievements.map(a => a.name).join(', ');
-        message += `\n\n🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
+        // We'll show this after undo timeout expires
+        setTimeout(() => {
+          if (!isUndoActive) {
+            const achievementNames = newAchievements.map(a => a.name).join(', ');
+            const message = `🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
+            Alert.alert("Achievement Unlocked!", message, [{ text: "Awesome!", style: "default" }]);
+          }
+        }, 5500); // Slightly after undo timeout
       }
-      
-      Alert.alert(
-        "Great job! 🎉",
-        message,
-        [{ text: "Awesome!", style: "default" }]
-      );
     } catch (error) {
       console.error("Error completing habit:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
@@ -90,6 +92,45 @@ export default function HomeScreen() {
       console.error("Error archiving habit:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     }
+  };
+
+  const handleUndoNeeded = (action: UndoAction) => {
+    startUndoTimer(action, () => {
+      // Auto-dismiss after 5 seconds - no action needed
+    });
+  };
+
+  const handleUndo = async () => {
+    const action = executeUndo();
+    if (!action) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (action.type === 'complete') {
+        // Undo completion
+        const removedCompletion = await databaseService.removeHabitCompletion(action.habitId, today);
+        if (removedCompletion) {
+          await databaseService.rollbackUserStats(removedCompletion.points, today);
+        }
+      } else if (action.type === 'archive') {
+        // Undo archive
+        await unarchiveHabit(action.habitId);
+      }
+      
+      // Refresh all data
+      refetchCompletions();
+      refetchStats();
+      refetchHabits();
+      
+    } catch (error) {
+      console.error('Undo failed:', error);
+      Alert.alert('Undo Failed', 'Could not undo the action. Please try again.');
+    }
+  };
+
+  const handleDismissUndo = () => {
+    cancelUndoTimer();
   };
 
   if (habitsLoading || statsLoading || completionsLoading) {
@@ -154,6 +195,7 @@ export default function HomeScreen() {
                     refetchCompletions();
                     refetchStats();
                   }}
+                  onUndoNeeded={handleUndoNeeded}
                 />
               ))}
             </View>
@@ -171,6 +213,14 @@ export default function HomeScreen() {
           <Text style={styles.achievementsButtonText}>View Achievements</Text>
         </TouchableOpacity>
       </ScrollView>
+      
+      {/* Undo Toast */}
+      <UndoToast
+        action={pendingAction}
+        onUndo={handleUndo}
+        onDismiss={handleDismissUndo}
+        visible={isUndoActive}
+      />
     </SafeAreaView>
   );
 }

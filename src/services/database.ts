@@ -148,6 +148,33 @@ export class DatabaseService {
     return this.getCompletionsForDate(today);
   }
 
+  async removeHabitCompletion(habitId: string, date: string): Promise<HabitCompletion | null> {
+    const db = this.getDb();
+    
+    // Get the completion before deleting (for rollback data)
+    const completion = await db.getFirstAsync<HabitCompletion>(
+      'SELECT * FROM habitCompletions WHERE habitId = ? AND date = ?',
+      [habitId, date]
+    );
+    
+    if (completion) {
+      await db.runAsync(
+        'DELETE FROM habitCompletions WHERE habitId = ? AND date = ?',
+        [habitId, date]
+      );
+    }
+    
+    return completion;
+  }
+
+  async getHabitCompletion(habitId: string, date: string): Promise<HabitCompletion | null> {
+    const db = this.getDb();
+    return await db.getFirstAsync<HabitCompletion>(
+      'SELECT * FROM habitCompletions WHERE habitId = ? AND date = ?',
+      [habitId, date]
+    );
+  }
+
   async getWeeklyProgress(startDate: string, endDate: string): Promise<DailyTotal[]> {
     const db = this.getDb();
     const result = await db.getAllAsync<{date: string, count: number}>(
@@ -242,6 +269,61 @@ export class DatabaseService {
        WHERE id = 1`,
       [newTotalPoints, newTotalCompletions, newCurrentStreak, newLongestStreak, completionDate]
     );
+  }
+
+  async rollbackUserStats(pointsToSubtract: number, completionDate: string): Promise<void> {
+    const db = this.getDb();
+    const stats = await this.getUserStats();
+    
+    const newTotalPoints = Math.max(0, stats.totalPoints - pointsToSubtract);
+    const newTotalCompletions = Math.max(0, stats.totalCompletions - 1);
+    
+    // Recalculate current streak by checking if there are any completions before the rollback date
+    const newStreak = await this.recalculateCurrentStreak(completionDate);
+    
+    await db.runAsync(
+      `UPDATE userStats 
+       SET totalPoints = ?, totalCompletions = ?, currentStreak = ?
+       WHERE id = 1`,
+      [newTotalPoints, newTotalCompletions, newStreak]
+    );
+  }
+
+  private async recalculateCurrentStreak(excludeDate?: string): Promise<number> {
+    const db = this.getDb();
+    
+    // Get all completion dates in descending order, excluding the specified date if provided
+    const excludeClause = excludeDate ? 'AND date != ?' : '';
+    const params = excludeDate ? [excludeDate] : [];
+    
+    const completions = await db.getAllAsync<{date: string}>(
+      `SELECT DISTINCT date FROM habitCompletions 
+       WHERE 1=1 ${excludeClause}
+       ORDER BY date DESC`,
+      params
+    );
+    
+    if (completions.length === 0) return 0;
+    
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (const completion of completions) {
+      const completionDate = new Date(completion.date);
+      const dayDiff = Math.floor((currentDate.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dayDiff === streak) {
+        // Consecutive day
+        streak++;
+        currentDate = completionDate;
+      } else {
+        // Streak broken
+        break;
+      }
+    }
+    
+    return streak;
   }
 
   // Achievement operations

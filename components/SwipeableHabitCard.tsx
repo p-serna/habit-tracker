@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Dimensions } from "react-native";
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from "react-native-gesture-handler";
 import HabitCard from "./HabitCard";
 import { Habit } from "@/src/types/database";
+import { UndoAction } from "./UndoToast";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = 100;
@@ -15,6 +16,7 @@ interface SwipeableHabitCardProps {
   onArchive: (habitId: string) => void;
   onHapticFeedback: () => void;
   onRefreshNeeded: () => void;
+  onUndoNeeded: (action: UndoAction) => void;
 }
 
 export default function SwipeableHabitCard({
@@ -24,6 +26,7 @@ export default function SwipeableHabitCard({
   onArchive,
   onHapticFeedback,
   onRefreshNeeded,
+  onUndoNeeded,
 }: SwipeableHabitCardProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
@@ -53,10 +56,24 @@ export default function SwipeableHabitCard({
         
         if (translationX > 0) {
           // Right swipe - complete habit
+          const undoData: UndoAction = {
+            type: 'complete',
+            habitId: habit.id,
+            habitName: habit.name,
+            timestamp: Date.now(),
+          };
           onComplete(habit.id);
+          onUndoNeeded(undoData);
         } else {
           // Left swipe - archive habit
+          const undoData: UndoAction = {
+            type: 'archive',
+            habitId: habit.id,
+            habitName: habit.name,
+            timestamp: Date.now(),
+          };
           onArchive(habit.id);
+          onUndoNeeded(undoData);
         }
       }
       
@@ -139,6 +156,16 @@ export default function SwipeableHabitCard({
             isCompleted={isCompleted}
             onHapticFeedback={onHapticFeedback}
             onRefreshNeeded={onRefreshNeeded}
+            onComplete={(habitId) => {
+              const undoData: UndoAction = {
+                type: 'complete',
+                habitId: habit.id,
+                habitName: habit.name,
+                timestamp: Date.now(),
+              };
+              onComplete(habitId);
+              onUndoNeeded(undoData);
+            }}
           />
         </Animated.View>
       </PanGestureHandler>

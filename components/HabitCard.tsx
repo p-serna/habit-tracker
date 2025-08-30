@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Habit } from "@/src/types/database";
 
 interface HabitCardProps {
@@ -7,16 +7,27 @@ interface HabitCardProps {
   isCompleted: boolean;
   onHapticFeedback: () => void;
   onRefreshNeeded: () => void;
+  onComplete?: (habitId: string) => void;
 }
 
-export default function HabitCard({ habit, isCompleted }: HabitCardProps) {
+export default function HabitCard({ habit, isCompleted, onHapticFeedback, onComplete }: HabitCardProps) {
+  const handlePress = () => {
+    if (!isCompleted && onComplete) {
+      onHapticFeedback();
+      onComplete(habit.id);
+    }
+  };
+
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.container,
         { borderLeftColor: habit.color },
         isCompleted && styles.completedContainer,
       ]}
+      onPress={handlePress}
+      disabled={isCompleted}
+      activeOpacity={isCompleted ? 1 : 0.7}
     >
       <View style={styles.content}>
         <View style={styles.leftSection}>
@@ -48,7 +59,7 @@ export default function HabitCard({ habit, isCompleted }: HabitCardProps) {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

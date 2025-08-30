@@ -8,6 +8,15 @@
 - GestureHandlerRootView properly configured
 - Database migration v2 adds archive fields
 
+✅ **Phase 2 Complete**: Undo system implemented
+- UndoToast component with slide-up animation and 5-second timer
+- useUndoState hook for undo state management
+- Database methods for removing completions and rolling back stats
+- SwipeableHabitCard captures undo data and triggers callbacks
+- HomeScreen integrates UndoToast and handles undo actions
+- Fixed clicking on habits to mark as completed (both tap and swipe work)
+- Undo works for both complete and archive actions
+
 ## Phase 2 Objective
 Implement undo functionality for swipe actions to prevent accidental completions and archiving.
 
@@ -250,3 +259,13 @@ const handleUndoComplete = async (action: UndoAction) => {
 - Use React state for undo management (no need for AsyncStorage for 5-second timeouts)
 - Consider showing celebration popup only after undo timeout expires
 - Test thoroughly on both iOS and Android for gesture conflicts
+
+## Phase 3 Preparation Notes
+
+With Phase 2 complete, the following items should be addressed in Phase 3:
+- Remove completion popup modal (currently delayed by achievement timeout)
+- Add swipe gesture hints/tutorials for new users  
+- Implement accessibility support for swipe actions
+- Test gesture conflicts with scrolling
+- Performance optimization for lists with many habits
+- Comprehensive testing on various devices and screen sizes
