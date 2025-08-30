@@ -289,7 +289,7 @@ src/
 
 ## Notes
 - Gesture thresholds may need device-specific tuning
-- Consider platform-specific gesture conventions (iOS vs Android)
+- Consider platform-specific gesture conventions (iOS vs Android). If necessary, we focus first on Android.
 - Ensure gestures work with external keyboards and accessibility devices
 
 ## Success Criteria
