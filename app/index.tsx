@@ -9,24 +9,31 @@ import {
   SafeAreaView,
   Platform,
 } from "react-native";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { router } from "expo-router";
+import { useHabits, useTodayCompletions, useStats, useAchievements } from "@/src/hooks";
+import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import HabitCard from "@/components/HabitCard";
 import StatsHeader from "@/components/StatsHeader";
 import WeeklyProgress from "@/components/WeeklyProgress";
 
 export default function HomeScreen() {
-  const habits = useQuery(api.habits.list);
-  const todayCompletions = useQuery(api.habits.getTodayCompletions);
-  const stats = useQuery(api.stats.getUserStats);
-  const initializeAchievements = useMutation(api.achievements.initializeAchievements);
+  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits } = useHabits();
+  const { data: todayCompletions, isLoading: completionsLoading, refetch: refetchCompletions } = useTodayCompletions();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useStats();
+  const { initializeAchievements } = useAchievements();
+  
 
   useEffect(() => {
     // Initialize achievements on first load
-    initializeAchievements({});
+    initializeAchievements();
   }, []);
+
+  // Refetch habits when screen comes back into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refetchHabits();
+    }, [refetchHabits])
+  );
 
   const completedToday = new Set(todayCompletions?.map(c => c.habitId) || []);
 
@@ -36,7 +43,7 @@ export default function HomeScreen() {
     }
   };
 
-  if (habits === undefined || stats === undefined) {
+  if (habitsLoading || statsLoading || completionsLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -49,7 +56,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <StatsHeader stats={stats} />
+        {stats && <StatsHeader stats={stats} />}
         
         <WeeklyProgress />
 
@@ -67,7 +74,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {habits.length === 0 ? (
+          {habits?.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateIcon}>🎯</Text>
               <Text style={styles.emptyStateTitle}>No habits yet</Text>
@@ -86,12 +93,16 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.habitsContainer}>
-              {habits.map((habit) => (
+              {habits?.map((habit) => (
                 <HabitCard
-                  key={habit._id}
+                  key={habit.id}
                   habit={habit}
-                  isCompleted={completedToday.has(habit._id)}
+                  isCompleted={completedToday.has(habit.id)}
                   onHapticFeedback={handleHapticFeedback}
+                  onRefreshNeeded={() => {
+                    refetchCompletions();
+                    refetchStats();
+                  }}
                 />
               ))}
             </View>

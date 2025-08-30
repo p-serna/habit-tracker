@@ -10,13 +10,12 @@ import {
   Platform,
 } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useAchievements, useStats } from "@/src/hooks";
 import * as Haptics from "expo-haptics";
 
 export default function AchievementsScreen() {
-  const achievements = useQuery(api.achievements.list);
-  const stats = useQuery(api.stats.getUserStats);
+  const { data: achievements, isLoading: achievementsLoading } = useAchievements();
+  const { data: stats, isLoading: statsLoading } = useStats();
 
   const handleHapticFeedback = () => {
     if (Platform.OS !== 'web') {
@@ -24,7 +23,7 @@ export default function AchievementsScreen() {
     }
   };
 
-  if (achievements === undefined || stats === undefined) {
+  if (achievementsLoading || statsLoading || !achievements || !stats) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -100,7 +99,7 @@ export default function AchievementsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🏆 Unlocked</Text>
               {unlockedAchievements.map((achievement) => (
-                <View key={achievement._id} style={[styles.achievementCard, styles.unlockedCard]}>
+                <View key={achievement.id} style={[styles.achievementCard, styles.unlockedCard]}>
                   <View style={styles.achievementContent}>
                     <View style={styles.achievementIcon}>
                       <Text style={styles.achievementIconText}>{achievement.icon}</Text>
@@ -129,7 +128,7 @@ export default function AchievementsScreen() {
                 const progressText = getProgressText(achievement);
                 
                 return (
-                  <View key={achievement._id} style={[styles.achievementCard, styles.lockedCard]}>
+                  <View key={achievement.id} style={[styles.achievementCard, styles.lockedCard]}>
                     <View style={styles.achievementContent}>
                       <View style={[styles.achievementIcon, styles.lockedIcon]}>
                         <Text style={styles.lockedIconText}>{achievement.icon}</Text>

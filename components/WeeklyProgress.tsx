@@ -2,22 +2,27 @@
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useWeeklyProgress } from "@/src/hooks";
 
 export default function WeeklyProgress() {
   const today = new Date();
   const startDate = new Date();
   startDate.setDate(today.getDate() - 6);
   
-  const weeklyProgress = useQuery(api.completions.getWeeklyProgress, {
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
-  });
+  const { data: weeklyProgressData, isLoading } = useWeeklyProgress(
+    startDate.toISOString().split('T')[0],
+    today.toISOString().split('T')[0]
+  );
 
-  if (!weeklyProgress) {
+  if (isLoading || !weeklyProgressData) {
     return null;
   }
+
+  // Convert array format to object for easy lookup
+  const weeklyProgress: Record<string, number> = {};
+  weeklyProgressData.forEach(item => {
+    weeklyProgress[item.date] = item.count;
+  });
 
   const days = [];
   

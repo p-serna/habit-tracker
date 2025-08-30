@@ -2,29 +2,21 @@
 
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-
-interface Habit {
-  _id: Id<"habits">;
-  name: string;
-  description?: string;
-  color: string;
-  icon: string;
-  points: number;
-  targetFrequency: number;
-}
+import { useCompletions, useAchievements, useStats } from "@/src/hooks";
+import { Habit } from "@/src/types/database";
 
 
 interface HabitCardProps {
   habit: Habit;
   isCompleted: boolean;
   onHapticFeedback: () => void;
+  onRefreshNeeded: () => void;
 }
 
-export default function HabitCard({ habit, isCompleted, onHapticFeedback }: HabitCardProps) {
-  const completeHabit = useMutation(api.completions.completeHabit);
+export default function HabitCard({ habit, isCompleted, onHapticFeedback, onRefreshNeeded }: HabitCardProps) {
+  const { completeHabit } = useCompletions();
+  const { checkAndUnlockAchievements } = useAchievements();
+  const { updateStats } = useStats();
 
   const handleToggle = async () => {
     onHapticFeedback();
@@ -32,14 +24,28 @@ export default function HabitCard({ habit, isCompleted, onHapticFeedback }: Habi
     try {
       if (!isCompleted) {
         const today = new Date().toISOString().split('T')[0];
-        await completeHabit({ 
-          habitId: habit._id,
-          date: today
-        });
+        await completeHabit(habit.id, today);
+        
+        // Refresh parent component state to update UI immediately
+        onRefreshNeeded();
+        
+        // Update user stats
+        await updateStats(habit.points, today);
+        
+        // Check for new achievements
+        const newAchievements = await checkAndUnlockAchievements();
+        
         // Show celebration for completion
+        let message = `You earned ${habit.points} points for completing "${habit.name}"!`;
+        
+        if (newAchievements.length > 0) {
+          const achievementNames = newAchievements.map(a => a.name).join(', ');
+          message += `\n\n🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
+        }
+        
         Alert.alert(
           "Great job! 🎉",
-          `You earned ${habit.points} points for completing "${habit.name}"!`,
+          message,
           [{ text: "Awesome!", style: "default" }]
         );
       }
