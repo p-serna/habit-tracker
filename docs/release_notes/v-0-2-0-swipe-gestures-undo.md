@@ -2,7 +2,7 @@
 
 **Release Date**: September 1, 2025  
 **Epic**: 002 - Swipe Gestures and Undo Implementation  
-**Version**: 2.1.0
+**Version**: 0.3.0
 
 ## 🎉 New Features
 
