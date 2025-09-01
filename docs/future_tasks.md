@@ -1,0 +1,2 @@
+- [ ] A way to start anew
+- [ ] Habits are not restarted every day? 0:00
