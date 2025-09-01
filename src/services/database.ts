@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { runMigrations } from './migrations';
+import { generateId } from '../utils/id';
 import type { 
   Habit, 
   HabitCompletion, 
@@ -31,11 +32,12 @@ export class DatabaseService {
   async getHabits(): Promise<Habit[]> {
     const db = this.getDb();
     const result = await db.getAllAsync<Habit>(
-      'SELECT * FROM habits WHERE isActive = 1 ORDER BY createdAt DESC'
+      'SELECT * FROM habits WHERE isActive = 1 AND (isArchived IS NULL OR isArchived = 0) ORDER BY createdAt DESC'
     );
     return result.map(habit => ({
       ...habit,
-      isActive: Boolean(habit.isActive)
+      isActive: Boolean(habit.isActive),
+      isArchived: Boolean(habit.isArchived)
     }));
   }
 
@@ -76,6 +78,22 @@ export class DatabaseService {
   async removeHabit(id: string): Promise<void> {
     const db = this.getDb();
     await db.runAsync('UPDATE habits SET isActive = 0 WHERE id = ?', [id]);
+  }
+
+  async archiveHabit(habitId: string): Promise<void> {
+    const db = this.getDb();
+    await db.runAsync(
+      'UPDATE habits SET isArchived = 1, archivedAt = ? WHERE id = ?',
+      [Date.now(), habitId]
+    );
+  }
+
+  async unarchiveHabit(habitId: string): Promise<void> {
+    const db = this.getDb();
+    await db.runAsync(
+      'UPDATE habits SET isArchived = 0, archivedAt = NULL WHERE id = ?',
+      [habitId]
+    );
   }
 
   // Completion operations
@@ -128,6 +146,33 @@ export class DatabaseService {
   async getTodayCompletions(): Promise<HabitCompletion[]> {
     const today = new Date().toISOString().split('T')[0];
     return this.getCompletionsForDate(today);
+  }
+
+  async removeHabitCompletion(habitId: string, date: string): Promise<HabitCompletion | null> {
+    const db = this.getDb();
+    
+    // Get the completion before deleting (for rollback data)
+    const completion = await db.getFirstAsync<HabitCompletion>(
+      'SELECT * FROM habitCompletions WHERE habitId = ? AND date = ?',
+      [habitId, date]
+    );
+    
+    if (completion) {
+      await db.runAsync(
+        'DELETE FROM habitCompletions WHERE habitId = ? AND date = ?',
+        [habitId, date]
+      );
+    }
+    
+    return completion;
+  }
+
+  async getHabitCompletion(habitId: string, date: string): Promise<HabitCompletion | null> {
+    const db = this.getDb();
+    return await db.getFirstAsync<HabitCompletion>(
+      'SELECT * FROM habitCompletions WHERE habitId = ? AND date = ?',
+      [habitId, date]
+    );
   }
 
   async getWeeklyProgress(startDate: string, endDate: string): Promise<DailyTotal[]> {
@@ -226,6 +271,61 @@ export class DatabaseService {
     );
   }
 
+  async rollbackUserStats(pointsToSubtract: number, completionDate: string): Promise<void> {
+    const db = this.getDb();
+    const stats = await this.getUserStats();
+    
+    const newTotalPoints = Math.max(0, stats.totalPoints - pointsToSubtract);
+    const newTotalCompletions = Math.max(0, stats.totalCompletions - 1);
+    
+    // Recalculate current streak by checking if there are any completions before the rollback date
+    const newStreak = await this.recalculateCurrentStreak(completionDate);
+    
+    await db.runAsync(
+      `UPDATE userStats 
+       SET totalPoints = ?, totalCompletions = ?, currentStreak = ?
+       WHERE id = 1`,
+      [newTotalPoints, newTotalCompletions, newStreak]
+    );
+  }
+
+  private async recalculateCurrentStreak(excludeDate?: string): Promise<number> {
+    const db = this.getDb();
+    
+    // Get all completion dates in descending order, excluding the specified date if provided
+    const excludeClause = excludeDate ? 'AND date != ?' : '';
+    const params = excludeDate ? [excludeDate] : [];
+    
+    const completions = await db.getAllAsync<{date: string}>(
+      `SELECT DISTINCT date FROM habitCompletions 
+       WHERE 1=1 ${excludeClause}
+       ORDER BY date DESC`,
+      params
+    );
+    
+    if (completions.length === 0) return 0;
+    
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (const completion of completions) {
+      const completionDate = new Date(completion.date);
+      const dayDiff = Math.floor((currentDate.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dayDiff === streak) {
+        // Consecutive day
+        streak++;
+        currentDate = completionDate;
+      } else {
+        // Streak broken
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
   // Achievement operations
   async getAchievements(): Promise<Achievement[]> {
     const db = this.getDb();
@@ -279,10 +379,6 @@ export class DatabaseService {
     
     return unlockedAchievements;
   }
-}
-
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // Singleton instance

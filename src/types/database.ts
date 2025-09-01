@@ -8,6 +8,8 @@ export interface Habit {
   points: number;
   isActive: boolean;
   createdAt: number;
+  isArchived?: boolean;
+  archivedAt?: number;
 }
 
 export interface HabitCompletion {
