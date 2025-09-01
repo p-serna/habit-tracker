@@ -461,3 +461,36 @@ This document should be implemented **after** completing the swipe gestures docu
 - [ ] Archive operations maintain data consistency
 - [ ] Old Habits page infrastructure is ready for future development
 - [ ] Performance remains acceptable with 200+ active habits
+- [ ] User points restart functionality is available and working
+
+## Epic Completion Guide
+
+When wrapping up an epic, ensure the following steps are completed:
+
+### Documentation
+1. **Update Epic Status**: Mark epic as "✅ COMPLETED" with completion summary
+2. **Mark All Tasks**: Ensure all checklist items are marked as complete or moved to future work
+3. **Document Bug Fixes**: Add any bugs discovered and fixed during implementation
+4. **Create Release Notes**: Add comprehensive release notes in `docs/release_notes/[epic-number]-[epic-name].md`
+
+### Development Summary
+- **Implementation Summary**: Create `docs/development/[epic-number]-implementation-summary.md` if phases were complex
+- **Development Notes**: Document any phase-specific learnings in `docs/development/[epic-number]-phase[X]-[name].md`
+- **Technical Decisions**: Record any important architectural or technical decisions made
+
+### Code Quality
+- **Bug Verification**: Test all functionality and fix any discovered issues
+- **Code Review**: Ensure code follows project conventions and patterns
+- **Performance**: Verify no performance regressions were introduced
+
+### Release Preparation
+- **Release Notes**: Include user-facing changes, technical improvements, and bug fixes
+- **Migration Notes**: Document any required migration steps for users/developers
+- **Future Work**: Clearly separate completed work from optional future enhancements
+
+### PR Documentation
+When creating the final PR to main:
+- **Summary**: Concise overview of epic achievements
+- **Technical Details**: Key implementation highlights and architecture changes
+- **Test Plan**: Document testing approach and verification steps
+- **Documentation Links**: Reference epic docs, development notes, and release notes
