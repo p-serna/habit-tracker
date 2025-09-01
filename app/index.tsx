@@ -8,25 +8,31 @@ import {
   StyleSheet,
   SafeAreaView,
   Platform,
+  Alert,
 } from "react-native";
-import { useHabits, useTodayCompletions, useStats, useAchievements } from "@/src/hooks";
+import { useHabits, useTodayCompletions, useStats, useAchievements, useCompletions } from "@/src/hooks";
 import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
-import HabitCard from "@/components/HabitCard";
+import SwipeableHabitCard from "@/components/SwipeableHabitCard";
 import StatsHeader from "@/components/StatsHeader";
 import WeeklyProgress from "@/components/WeeklyProgress";
+import UndoToast, { UndoAction } from "@/components/UndoToast";
+import useUndoState from "@/src/hooks/useUndoState";
+import { databaseService } from "@/src/services/database";
 
 export default function HomeScreen() {
-  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits } = useHabits();
+  const { data: habits, isLoading: habitsLoading, refetch: refetchHabits, archiveHabit, unarchiveHabit } = useHabits();
   const { data: todayCompletions, isLoading: completionsLoading, refetch: refetchCompletions } = useTodayCompletions();
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useStats();
-  const { initializeAchievements } = useAchievements();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats, updateStats } = useStats();
+  const { initializeAchievements, checkAndUnlockAchievements } = useAchievements();
+  const { completeHabit } = useCompletions();
+  const { pendingAction, isUndoActive, startUndoTimer, cancelUndoTimer, executeUndo } = useUndoState();
   
 
   useEffect(() => {
     // Initialize achievements on first load
     initializeAchievements();
-  }, []);
+  }, [initializeAchievements]);
 
   // Refetch habits when screen comes back into focus
   useFocusEffect(
@@ -40,6 +46,130 @@ export default function HomeScreen() {
   const handleHapticFeedback = () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleCompleteHabit = async (habitId: string) => {
+    try {
+      const habit = habits?.find(h => h.id === habitId);
+      if (!habit) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      await completeHabit(habitId, today);
+      
+      // Refresh data
+      refetchCompletions();
+      refetchStats();
+      
+      // Update user stats
+      await updateStats(habit.points, today);
+      
+      // Check for new achievements but don't show popup yet (wait for undo timeout)
+      const newAchievements = await checkAndUnlockAchievements();
+      
+      // Store achievements data for later celebration if undo doesn't happen
+      if (newAchievements.length > 0) {
+        // We'll show this after undo timeout expires
+        setTimeout(() => {
+          if (!isUndoActive) {
+            const achievementNames = newAchievements.map(a => a.name).join(', ');
+            const message = `🏆 New Achievement${newAchievements.length > 1 ? 's' : ''} Unlocked: ${achievementNames}`;
+            Alert.alert("Achievement Unlocked!", message, [{ text: "Awesome!", style: "default" }]);
+          }
+        }, 5500); // Slightly after undo timeout
+      }
+    } catch (error) {
+      console.error("Error completing habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  const handleArchiveHabit = async (habitId: string) => {
+    try {
+      await archiveHabit(habitId);
+      refetchHabits();
+    } catch (error) {
+      console.error("Error archiving habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  const handleUndoNeeded = (action: UndoAction) => {
+    startUndoTimer(action, () => {
+      // Auto-dismiss after 5 seconds - no action needed
+    });
+  };
+
+  const handleUndo = async () => {
+    const action = executeUndo();
+    if (!action) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (action.type === 'complete') {
+        // Undo completion
+        const removedCompletion = await databaseService.removeHabitCompletion(action.habitId, today);
+        if (removedCompletion) {
+          await databaseService.rollbackUserStats(removedCompletion.points, today);
+        }
+      } else if (action.type === 'archive') {
+        // Undo archive
+        await unarchiveHabit(action.habitId);
+      } else if (action.type === 'uncomplete') {
+        // Undo uncomplete (re-complete the habit)
+        const habit = habits?.find(h => h.id === action.habitId);
+        if (habit && action.originalData) {
+          // Restore the completion
+          await completeHabit(action.habitId, today);
+          await updateStats(habit.points, today);
+        }
+      }
+      
+      // Refresh all data
+      refetchCompletions();
+      refetchStats();
+      refetchHabits();
+      
+    } catch (error) {
+      console.error('Undo failed:', error);
+      Alert.alert('Undo Failed', 'Could not undo the action. Please try again.');
+    }
+  };
+
+  const handleDismissUndo = () => {
+    cancelUndoTimer();
+  };
+
+  const handleUncompleteHabit = async (habitId: string) => {
+    try {
+      const habit = habits?.find(h => h.id === habitId);
+      if (!habit) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const removedCompletion = await databaseService.removeHabitCompletion(habitId, today);
+      
+      if (removedCompletion) {
+        await databaseService.rollbackUserStats(removedCompletion.points, today);
+      }
+      
+      // Refresh data
+      refetchCompletions();
+      refetchStats();
+      
+      // Create undo action for uncomplete
+      const undoData: UndoAction = {
+        type: 'uncomplete',
+        habitId: habit.id,
+        habitName: habit.name,
+        timestamp: Date.now(),
+        originalData: removedCompletion,
+      };
+      handleUndoNeeded(undoData);
+      
+    } catch (error) {
+      console.error("Error uncompleting habit:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     }
   };
 
@@ -62,7 +192,7 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Habits</Text>
+            <Text style={styles.sectionTitle}>Today&apos;s Habits</Text>
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => {
@@ -94,15 +224,19 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.habitsContainer}>
               {habits?.map((habit) => (
-                <HabitCard
+                <SwipeableHabitCard
                   key={habit.id}
                   habit={habit}
                   isCompleted={completedToday.has(habit.id)}
+                  onComplete={handleCompleteHabit}
+                  onArchive={handleArchiveHabit}
+                  onUncomplete={handleUncompleteHabit}
                   onHapticFeedback={handleHapticFeedback}
                   onRefreshNeeded={() => {
                     refetchCompletions();
                     refetchStats();
                   }}
+                  onUndoNeeded={handleUndoNeeded}
                 />
               ))}
             </View>
@@ -120,6 +254,14 @@ export default function HomeScreen() {
           <Text style={styles.achievementsButtonText}>View Achievements</Text>
         </TouchableOpacity>
       </ScrollView>
+      
+      {/* Undo Toast */}
+      <UndoToast
+        action={pendingAction}
+        onUndo={handleUndo}
+        onDismiss={handleDismissUndo}
+        visible={isUndoActive}
+      />
     </SafeAreaView>
   );
 }
