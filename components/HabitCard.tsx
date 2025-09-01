@@ -13,10 +13,13 @@ interface HabitCardProps {
 
 export default function HabitCard({ habit, isCompleted, onHapticFeedback, onComplete, onUncomplete }: HabitCardProps) {
   const handlePress = () => {
+    console.log('🐛 DEBUG: HabitCard tap triggered for habit:', habit.name, 'Completed:', isCompleted);
     onHapticFeedback();
     if (!isCompleted && onComplete) {
+      console.log('🐛 DEBUG: Calling onComplete for habit:', habit.id);
       onComplete(habit.id);
     } else if (isCompleted && onUncomplete) {
+      console.log('🐛 DEBUG: Calling onUncomplete for habit:', habit.id);
       onUncomplete(habit.id);
     }
   };

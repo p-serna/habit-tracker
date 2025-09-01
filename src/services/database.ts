@@ -100,6 +100,8 @@ export class DatabaseService {
   async completeHabit(habitId: string, date: string): Promise<string> {
     const db = this.getDb();
     
+    console.log('🐛 DEBUG: Database.completeHabit called for habit:', habitId, 'date:', date);
+    
     // Check if already completed
     const existing = await db.getFirstAsync<HabitCompletion>(
       'SELECT * FROM habitCompletions WHERE habitId = ? AND date = ?',
@@ -107,6 +109,7 @@ export class DatabaseService {
     );
     
     if (existing) {
+      console.log('🐛 DEBUG: Habit already completed today, throwing error');
       throw new Error('Habit already completed today');
     }
     
@@ -117,9 +120,11 @@ export class DatabaseService {
     );
     
     if (!habit) {
+      console.log('🐛 DEBUG: Habit not found in database');
       throw new Error('Habit not found');
     }
     
+    console.log('🐛 DEBUG: Creating completion record with points:', habit.points);
     const completionId = generateId();
     
     // Create completion record
@@ -130,7 +135,9 @@ export class DatabaseService {
     );
     
     // Update user stats
+    console.log('🐛 DEBUG: Updating user stats with points:', habit.points);
     await this.updateUserStats(habit.points, date);
+    console.log('🐛 DEBUG: Stats update complete');
     
     return completionId;
   }

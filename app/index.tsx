@@ -50,19 +50,28 @@ export default function HomeScreen() {
   };
 
   const handleCompleteHabit = async (habitId: string) => {
+    console.log('🐛 DEBUG: handleCompleteHabit called for habit:', habitId);
     try {
       const habit = habits?.find(h => h.id === habitId);
-      if (!habit) return;
+      if (!habit) {
+        console.log('🐛 DEBUG: Habit not found for id:', habitId);
+        return;
+      }
+      
+      console.log('🐛 DEBUG: Found habit:', habit.name, 'Points:', habit.points);
       
       const today = new Date().toISOString().split('T')[0];
+      console.log('🐛 DEBUG: Calling completeHabit for date:', today);
       await completeHabit(habitId, today);
+      console.log('🐛 DEBUG: completeHabit finished');
       
       // Refresh data
       refetchCompletions();
       refetchStats();
       
-      // Update user stats
-      await updateStats(habit.points, today);
+      // REMOVED: This was causing double counting!
+      // The database.completeHabit() already calls updateUserStats internally
+      // await updateStats(habit.points, today);
       
       // Check for new achievements but don't show popup yet (wait for undo timeout)
       const newAchievements = await checkAndUnlockAchievements();
