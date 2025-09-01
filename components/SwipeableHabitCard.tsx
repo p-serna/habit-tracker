@@ -32,9 +32,13 @@ export default function SwipeableHabitCard({
 }: SwipeableHabitCardProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  const isSwipeInProgress = useRef(false);
   
   const handleGestureEvent = (event: PanGestureHandlerGestureEvent) => {
     const { translationX } = event.nativeEvent;
+    
+    // Mark swipe as in progress
+    isSwipeInProgress.current = true;
     
     // Limit the translation to screen bounds
     const clampedTranslation = Math.max(-SCREEN_WIDTH * 0.6, Math.min(SCREEN_WIDTH * 0.6, translationX));
@@ -54,10 +58,12 @@ export default function SwipeableHabitCard({
       
       // Check if swipe was strong enough to trigger action
       if (absTranslationX >= COMPLETION_THRESHOLD) {
+        console.log('🐛 DEBUG: Swipe action triggered for habit:', habit.name, 'Translation:', translationX);
         onHapticFeedback();
         
         if (translationX > 0) {
           // Right swipe - complete habit
+          console.log('🐛 DEBUG: Right swipe - completing habit:', habit.id);
           const undoData: UndoAction = {
             type: 'complete',
             habitId: habit.id,
@@ -68,6 +74,7 @@ export default function SwipeableHabitCard({
           onUndoNeeded(undoData);
         } else {
           // Left swipe - archive habit
+          console.log('🐛 DEBUG: Left swipe - archiving habit:', habit.id);
           const undoData: UndoAction = {
             type: 'archive',
             habitId: habit.id,
@@ -77,7 +84,14 @@ export default function SwipeableHabitCard({
           onArchive(habit.id);
           onUndoNeeded(undoData);
         }
+      } else {
+        console.log('🐛 DEBUG: Swipe not strong enough, threshold:', absTranslationX, 'vs', COMPLETION_THRESHOLD);
       }
+      
+      // Reset swipe state after a short delay to prevent tap interference
+      setTimeout(() => {
+        isSwipeInProgress.current = false;
+      }, 100);
       
       // Reset animations
       Animated.parallel([
