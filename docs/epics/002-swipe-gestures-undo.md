@@ -315,9 +315,24 @@ src/
 - [x] Clicking on habit marks it as completed (both tap and swipe work)
 - [x] Icon positioning fixed (archive on right, complete on left for visibility)
 - [x] Swipe action visibility improved (only show relevant action)
+- [x] When habits are marked as completed, the points seems to be counted twice. Instead of 10 points, we would get 20 points.
 
-### Remaining Items (Optional Phase 3):
-- Accessibility enhancements
-- App backgrounding during undo
-- Performance optimization
-- Comprehensive testing
+## Epic 002 Status: ✅ COMPLETED
+
+### Core Implementation Complete:
+This epic has been successfully implemented with all core functionality working as intended:
+
+1. **Swipe Gestures**: Both left (archive) and right (complete) swipe actions work smoothly
+2. **Undo System**: 5-second undo window with visual toast notifications  
+3. **Multiple Interaction Methods**: Users can both tap and swipe to complete habits
+4. **Bug Fixes**: All identified issues have been resolved, including double counting of points
+5. **Visual Polish**: Proper action indicators and animations
+
+### 🐛 Final Bug Fix:
+- **Double Points Counting**: Fixed issue where habit completion was being processed twice (once in SwipeableHabitCard wrapper and once in main handler), causing 20 points instead of 10.
+
+### Remaining Items (Optional Future Enhancements):
+- Accessibility enhancements for swipe gestures
+- App backgrounding behavior during undo periods
+- Advanced performance optimization for large habit lists
+- Comprehensive automated testing suite

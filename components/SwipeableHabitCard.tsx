@@ -161,26 +161,8 @@ export default function SwipeableHabitCard({
             isCompleted={isCompleted}
             onHapticFeedback={onHapticFeedback}
             onRefreshNeeded={onRefreshNeeded}
-            onComplete={(habitId) => {
-              const undoData: UndoAction = {
-                type: 'complete',
-                habitId: habit.id,
-                habitName: habit.name,
-                timestamp: Date.now(),
-              };
-              onComplete(habitId);
-              onUndoNeeded(undoData);
-            }}
-            onUncomplete={(habitId) => {
-              const undoData: UndoAction = {
-                type: 'uncomplete',
-                habitId: habit.id,
-                habitName: habit.name,
-                timestamp: Date.now(),
-              };
-              onUncomplete(habitId);
-              onUndoNeeded(undoData);
-            }}
+            onComplete={onComplete}
+            onUncomplete={onUncomplete}
           />
         </Animated.View>
       </PanGestureHandler>
